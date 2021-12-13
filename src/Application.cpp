@@ -100,6 +100,23 @@ void Application::begin()
   xTaskCreate(application_task, "application_task", 8192, this, 1, &task_handle);
 }
 
+
+float floatMap(float x, float in_min, float in_max, float out_min, float out_max) {
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float readVolume(){
+  #ifdef VOLUME_POTENTIOMETER_PIN
+    int analogValue = analogRead(VOLUME_POTENTIOMETER_PIN);
+    // Rescale to potentiometer's voltage (from 0V to 3.3V):
+    float volume = floatMap(analogValue, 0, 4095, 0, 8);
+    return volume;
+  #else
+    return SPEAKER_VOLUME;
+  #endif
+  
+}
+
 // application task - coordinates everything
 void Application::loop()
 {
@@ -136,13 +153,13 @@ void Application::loop()
       m_output->start(SAMPLE_RATE);
     }
     // while the transmit button is not pushed and 1 second has not elapsed
-    Serial.print("Started Receiving");
+    Serial.println("Started Receiving");
     digitalWrite(I2S_SPEAKER_SD_PIN, HIGH);
     unsigned long start_time = millis();
     while (millis() - start_time < 1000 || !digitalRead(GPIO_TRANSMIT_BUTTON))
     {
       // read from the output buffer (which should be getting filled by the transport)
-      m_output_buffer->remove_samples(samples, 128);
+      m_output_buffer->remove_samples(samples, 128, readVolume());
       // and send the samples to the speaker
       m_output->write(samples, 128);
     }

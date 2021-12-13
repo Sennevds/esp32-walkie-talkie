@@ -64,7 +64,7 @@ public:
   }
 
   // convert the samples to 16 bit as they are going to the output
-  void remove_samples(int16_t *samples, int count)
+  void remove_samples(int16_t *samples, int count, uint8_t volume)
   {
     xSemaphoreTake(m_semaphore, portMAX_DELAY);
     for (int i = 0; i < count; i++)
@@ -89,7 +89,7 @@ public:
         m_buffering = false;
         // just send back the samples we've got and move the read head forward
         int16_t sample = m_buffer[m_read_head];
-        samples[i] = (sample - 128) << 5;
+        samples[i] = (sample - 128) << volume;
         m_read_head = (m_read_head + 1) % m_buffer_size;
         m_available_samples--;
       }
