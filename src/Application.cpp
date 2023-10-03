@@ -10,7 +10,13 @@
 #include "UdpTransport.h"
 #include "EspNowTransport.h"
 #include "OutputBuffer.h"
-#include "config.h"
+#include "MainConfig.h"
+
+#ifdef MAIN
+#include "PinConfigMain.h"
+#else
+#include "PinConfigSecond.h"
+#endif
 
 #ifdef ARDUINO_TINYPICO
 #include "TinyPICOIndicatorLed.h"
@@ -29,7 +35,7 @@ Application::Application()
 {
   m_output_buffer = new OutputBuffer(300 * 16);
 #ifdef USE_I2S_MIC_INPUT
-  m_input = new I2SMEMSSampler(I2S_NUM_0, i2s_mic_pins, i2s_mic_Config,128);
+  m_input = new I2SMEMSSampler(I2S_NUM_0, i2s_mic_pins, i2s_mic_Config, 128);
 #else
   m_input = new ADCSampler(ADC_UNIT_1, ADC1_CHANNEL_7, i2s_adc_config);
 #endif
@@ -41,12 +47,12 @@ Application::Application()
 #endif
 
 #ifdef USE_ESP_NOW
-  m_transport = new EspNowTransport(m_output_buffer,ESP_NOW_WIFI_CHANNEL);
+  m_transport = new EspNowTransport(m_output_buffer, ESP_NOW_WIFI_CHANNEL);
 #else
   m_transport = new UdpTransport(m_output_buffer);
 #endif
 
-  m_transport->set_header(TRANSPORT_HEADER_SIZE,transport_header);
+  m_transport->set_header(TRANSPORT_HEADER_SIZE, transport_header);
 
 #ifdef ARDUINO_TINYPICO
   m_indicator_led = new TinyPICOIndicatorLed();
@@ -62,6 +68,12 @@ Application::Application()
 
 void Application::begin()
 {
+
+#ifdef MAIN
+Serial.println("Main");
+#else
+Serial.println("Second");
+#endif
   // show a flashing indicator that we are trying to connect
   m_indicator_led->set_default_color(0);
   m_indicator_led->set_is_flashing(true, 0xff0000);
@@ -100,21 +112,21 @@ void Application::begin()
   xTaskCreate(application_task, "application_task", 8192, this, 1, &task_handle);
 }
 
-
-float floatMap(float x, float in_min, float in_max, float out_min, float out_max) {
+float floatMap(float x, float in_min, float in_max, float out_min, float out_max)
+{
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-float readVolume(){
-  #ifdef VOLUME_POTENTIOMETER_PIN
-    int analogValue = analogRead(VOLUME_POTENTIOMETER_PIN);
-    // Rescale to potentiometer's voltage (from 0V to 3.3V):
-    float volume = floatMap(analogValue, 0, 4095, 0, 8);
-    return volume;
-  #else
-    return SPEAKER_VOLUME;
-  #endif
-  
+float readVolume()
+{
+#ifdef VOLUME_POTENTIOMETER_PIN
+  int analogValue = analogRead(VOLUME_POTENTIOMETER_PIN);
+  // Rescale to potentiometer's voltage (from 0V to 3.3V):
+  float volume = floatMap(analogValue, 0, 4095, 0, 8);
+  return volume;
+#else
+  return SPEAKER_VOLUME;
+#endif
 }
 
 // application task - coordinates everything
